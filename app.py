@@ -19,7 +19,7 @@ else:
         credentials_info = json.load(f)
 
 # 環境変数からスプレッドシートIDを読み込む
-SHEET_ID = os.environ.get('GOOGLE_SHEET_ID', 'my-project-writing-462603-9b6b3d29df95')
+SHEET_ID = '1CZSXkDPMPCgVawL74UQyXFHP_psmR7HmWYz25eacT6M'
 
 # Google Sheets APIの設定
 scopes = [
