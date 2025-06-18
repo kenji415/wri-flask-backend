@@ -34,6 +34,8 @@ else:
 
 gc = gspread.authorize(creds)
 
+vision_client = vision.ImageAnnotatorClient(credentials=creds)
+
 def get_questions_from_sheet():
     sh = gc.open_by_key(SPREADSHEET_ID)
     worksheet = sh.worksheet(SHEET_NAME)
