@@ -13,28 +13,21 @@ CORS(app)
 SPREADSHEET_ID = '1CZSXkDPMPCgVawL74UQyXFHP_psmR7HmWYz25eacT6M'
 SHEET_NAME = 'data'
 
-# 認証情報の取得
-if 'GOOGLE_CREDENTIALS' in os.environ:
-    credentials_info = json.loads(os.environ['GOOGLE_CREDENTIALS'])
-    creds = Credentials.from_service_account_info(
-        credentials_info,
-        scopes=[
-            'https://www.googleapis.com/auth/spreadsheets.readonly',
-            'https://www.googleapis.com/auth/drive.readonly'
-        ]
-    )
-else:
-    creds = Credentials.from_service_account_file(
-        'config/credentials.json',
-        scopes=[
-            'https://www.googleapis.com/auth/spreadsheets.readonly',
-            'https://www.googleapis.com/auth/drive.readonly'
-        ]
-    )
+# スプレッドシート用認証
+spreadsheet_info = json.loads(os.environ['GOOGLE_CREDENTIALS'])
+spreadsheet_creds = Credentials.from_service_account_info(
+    spreadsheet_info,
+    scopes=[
+        'https://www.googleapis.com/auth/spreadsheets.readonly',
+        'https://www.googleapis.com/auth/drive.readonly'
+    ]
+)
+gc = gspread.authorize(spreadsheet_creds)
 
-gc = gspread.authorize(creds)
-
-vision_client = vision.ImageAnnotatorClient(credentials=creds)
+# Vision API用認証
+vision_info = json.loads(os.environ['GOOGLE_VISION'])
+vision_creds = Credentials.from_service_account_info(vision_info)
+vision_client = vision.ImageAnnotatorClient(credentials=vision_creds)
 
 def get_questions_from_sheet():
     sh = gc.open_by_key(SPREADSHEET_ID)
