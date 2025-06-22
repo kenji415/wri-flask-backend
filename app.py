@@ -37,9 +37,15 @@ def get_questions_from_sheet():
     for row in rows[1:]:
         if len(row) >= 6 and row[4].strip() and row[5].strip():
             questions.append({
+                "id": row[0].strip() if len(row) > 0 else "",
                 "question": row[4].strip(),
                 "answer": row[5].strip(),
-                "category": row[1].strip()
+                "category": row[1].strip(),
+                "subCategory": row[2].strip() if len(row) > 2 else "",
+                "detailCategory": row[2].strip() if len(row) > 2 else "",  # この行を追加
+                "type": row[6].strip() if len(row) > 6 else "",
+                "level": row[7].strip() if len(row) > 7 else "",
+                "imageUrl": row[8].strip() if len(row) > 8 else ""
             })
     return questions
 
@@ -69,4 +75,4 @@ def vision_ocr():
         return jsonify({'text': ''})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(host='0.0.0.0', port=5001)
