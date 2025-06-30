@@ -42,10 +42,11 @@ def get_questions_from_sheet():
                 "answer": row[5].strip(),
                 "category": row[1].strip(),
                 "subCategory": row[2].strip() if len(row) > 2 else "",
-                "detailCategory": row[2].strip() if len(row) > 2 else "",  # この行を追加
+                "detailCategory": row[2].strip() if len(row) > 2 else "",
                 "type": row[6].strip() if len(row) > 6 else "",
                 "level": row[7].strip() if len(row) > 7 else "",
-                "imageUrl": row[8].strip() if len(row) > 8 else ""
+                "imageUrl": row[8].strip() if len(row) > 8 else "",
+                "hint": row[9].strip() if len(row) > 9 else ""
             })
     return questions
 
