@@ -19,7 +19,8 @@ spreadsheet_creds = Credentials.from_service_account_info(
     spreadsheet_info,
     scopes=[
         'https://www.googleapis.com/auth/spreadsheets.readonly',
-        'https://www.googleapis.com/auth/drive.readonly'
+        'https://www.googleapis.com/auth/drive.readonly',
+        'https://www.googleapis.com/auth/spreadsheets'
     ]
 )
 gc = gspread.authorize(spreadsheet_creds)
@@ -74,6 +75,48 @@ def vision_ocr():
         return jsonify({'text': texts[0].description.strip()})
     else:
         return jsonify({'text': ''})
+
+@app.route('/api/record_answer', methods=['POST'])
+def record_answer():
+    try:
+        data = request.json
+        user_id = data.get('userId')
+        user_name = data.get('userName')
+        question_id = data.get('questionId')
+        is_correct = data.get('isCorrect')
+        
+        # スプレッドシートの「user集計」タブを取得
+        sh = gc.open_by_key(SPREADSHEET_ID)
+        worksheet = sh.worksheet('user集計')
+        
+        # 既存データを取得
+        existing_data = worksheet.get_all_values()
+        
+        # 既存のユーザー・問題の組み合わせを探す
+        found = False
+        for i, row in enumerate(existing_data[1:], start=2):  # ヘッダーをスキップ
+            if len(row) >= 3 and row[0] == user_id and row[2] == question_id:
+                # 既存データを更新
+                current_answers = int(row[3]) if len(row) > 3 and row[3] else 0
+                current_correct = int(row[4]) if len(row) > 4 and row[4] else 0
+                
+                new_answers = current_answers + 1
+                new_correct = current_correct + (1 if is_correct else 0)
+                
+                worksheet.update(f'D{i}', new_answers)
+                worksheet.update(f'E{i}', new_correct)
+                found = True
+                break
+        
+        if not found:
+            # 新規データを追加
+            new_row = [user_id, user_name, question_id, 1, 1 if is_correct else 0]
+            worksheet.append_row(new_row)
+        
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
