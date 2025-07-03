@@ -99,6 +99,41 @@ def vision_ocr():
     else:
         return jsonify({'text': ''})
 
+@app.route('/api/get_image/<file_id>')
+def get_image(file_id):
+    try:
+        # Google Driveの画像を直接取得して返す（Discordボットと同じ方法）
+        import requests
+        from io import BytesIO
+        
+        # Google Driveの直接ダウンロードURL
+        direct_url = f'https://drive.google.com/uc?export=download&id={file_id}'
+        
+        # 画像を取得
+        response = requests.get(direct_url, timeout=10)
+        if response.status_code == 200:
+            # Content-Typeを確認して適切なMIMEタイプを設定
+            ctype = response.headers.get("Content-Type", "")
+            if 'gif' in ctype:
+                mimetype = 'image/gif'
+            elif 'png' in ctype:
+                mimetype = 'image/png'
+            elif 'jpeg' in ctype or 'jpg' in ctype:
+                mimetype = 'image/jpeg'
+            else:
+                mimetype = 'image/jpeg'  # デフォルト
+            
+            # 画像データをそのまま返す
+            from flask import Response
+            return Response(response.content, mimetype=mimetype)
+        else:
+            print(f"Failed to fetch image: {response.status_code}")
+            return jsonify({"error": "Failed to fetch image"}), 404
+            
+    except Exception as e:
+        print(f"Image fetch error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/record_answer', methods=['POST'])
 def record_answer():
     try:
