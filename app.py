@@ -47,7 +47,15 @@ def get_questions_from_sheet():
                 "type": row[6].strip() if len(row) > 6 else "",
                 "level": row[7].strip() if len(row) > 7 else "",
                 "imageUrl": row[8].strip() if len(row) > 8 else "",
-                "hint": row[9].strip() if len(row) > 9 else ""
+                "hint": row[9].strip() if len(row) > 9 else "",
+                # 選択肢データ（M列以降）
+                "choice1": row[12].strip() if len(row) > 12 else "",
+                "choice2": row[13].strip() if len(row) > 13 else "",
+                "choice3": row[14].strip() if len(row) > 14 else "",
+                "choice4": row[15].strip() if len(row) > 15 else "",
+                "choice5": row[16].strip() if len(row) > 16 else "",
+                "choice6": row[17].strip() if len(row) > 17 else "",
+                "choice7": row[18].strip() if len(row) > 18 else ""
             })
     return questions
 
@@ -55,8 +63,22 @@ def get_questions_from_sheet():
 def get_questions():
     try:
         questions = get_questions_from_sheet()
+        
+        # デバッグ用: 選択肢問題の確認
+        choice_questions = [q for q in questions if q.get('type') == '選択肢']
+        print(f"選択肢問題の数: {len(choice_questions)}")
+        if choice_questions:
+            print(f"最初の選択肢問題: {choice_questions[0]}")
+            print(f"選択肢1: '{choice_questions[0].get('choice1')}'")
+            print(f"選択肢2: '{choice_questions[0].get('choice2')}'")
+            print(f"選択肢3: '{choice_questions[0].get('choice3')}'")
+            print(f"選択肢4: '{choice_questions[0].get('choice4')}'")
+        
         return jsonify(questions)
     except Exception as e:
+        print(f"API エラー: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/vision_ocr', methods=['POST'])
@@ -85,12 +107,34 @@ def record_answer():
         question_id = data.get('questionId')
         is_correct = data.get('isCorrect')
         
+        print(f"Record answer request: userId={user_id}, userName={user_name}, questionId={question_id}, isCorrect={is_correct}")
+        
         # スプレッドシートの「user集計」タブを取得
         sh = gc.open_by_key(SPREADSHEET_ID)
-        worksheet = sh.worksheet('user集計')
+        
+        # ワークシートの存在確認
+        try:
+            worksheet = sh.worksheet('user集計')
+            print("user集計タブにアクセス成功")
+        except Exception as e:
+            print(f"user集計タブへのアクセスエラー: {e}")
+            # タブが存在しない場合は作成を試行
+            try:
+                worksheet = sh.add_worksheet(title='user集計', rows=1000, cols=10)
+                # ヘッダー行を追加
+                worksheet.append_row(['ユーザーID', 'ユーザー名', '問題ID', '回答回数', '正解回数'])
+                print("user集計タブを作成しました")
+            except Exception as create_error:
+                print(f"user集計タブの作成エラー: {create_error}")
+                return jsonify({"error": f"Failed to create user集計 tab: {create_error}"}), 500
         
         # 既存データを取得
-        existing_data = worksheet.get_all_values()
+        try:
+            existing_data = worksheet.get_all_values()
+            print(f"既存データ行数: {len(existing_data)}")
+        except Exception as e:
+            print(f"既存データ取得エラー: {e}")
+            return jsonify({"error": f"Failed to get existing data: {e}"}), 500
         
         # 既存のユーザー・問題の組み合わせを探す
         found = False
@@ -103,20 +147,34 @@ def record_answer():
                 new_answers = current_answers + 1
                 new_correct = current_correct + (1 if is_correct else 0)
                 
-                worksheet.update(f'D{i}', new_answers)
-                worksheet.update(f'E{i}', new_correct)
+                try:
+                    worksheet.update(f'D{i}', [[new_answers]])
+                    worksheet.update(f'E{i}', [[new_correct]])
+                    print(f"既存データ更新: 行{i}, 回答回数={new_answers}, 正解回数={new_correct}")
+                except Exception as e:
+                    print(f"データ更新エラー: {e}")
+                    return jsonify({"error": f"Failed to update data: {e}"}), 500
+                
                 found = True
                 break
         
         if not found:
             # 新規データを追加
             new_row = [user_id, user_name, question_id, 1, 1 if is_correct else 0]
-            worksheet.append_row(new_row)
+            try:
+                worksheet.append_row(new_row)
+                print(f"新規データ追加: {new_row}")
+            except Exception as e:
+                print(f"新規データ追加エラー: {e}")
+                return jsonify({"error": f"Failed to append new data: {e}"}), 500
         
         return jsonify({"success": True})
         
     except Exception as e:
+        print(f"record_answer API エラー: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=5001) 
