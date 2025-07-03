@@ -48,6 +48,7 @@ def get_questions_from_sheet():
                 "level": row[7].strip() if len(row) > 7 else "",
                 "imageUrl": row[8].strip() if len(row) > 8 else "",
                 "hint": row[9].strip() if len(row) > 9 else "",
+                "questionImageUrl": row[10].strip() if len(row) > 10 else "",
                 # 選択肢データ（M列以降）
                 "choice1": row[12].strip() if len(row) > 12 else "",
                 "choice2": row[13].strip() if len(row) > 13 else "",
