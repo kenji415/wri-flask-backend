@@ -156,9 +156,9 @@ def record_answer():
             print(f"user集計タブへのアクセスエラー: {e}")
             # タブが存在しない場合は作成を試行
             try:
-                worksheet = sh.add_worksheet(title='user集計', rows=1000, cols=10)
-                # ヘッダー行を追加
-                worksheet.append_row(['ユーザーID', 'ユーザー名', '問題ID', '回答回数', '正解回数'])
+                worksheet = sh.add_worksheet(title='user集計', rows=1000, cols=12)
+                # ヘッダー行を追加（F～K列を含む）
+                worksheet.append_row(['ユーザーID', 'ユーザー名', '問題ID', '回答回数', '正解回数', '直近1', '直近1日付', '直近2', '直近2日付', '直近3', '直近3日付'])
                 print("user集計タブを作成しました")
             except Exception as create_error:
                 print(f"user集計タブの作成エラー: {create_error}")
@@ -172,6 +172,10 @@ def record_answer():
             print(f"既存データ取得エラー: {e}")
             return jsonify({"error": f"Failed to get existing data: {e}"}), 500
         
+        # 現在の日付を取得（YYYY.MM.DD形式）
+        from datetime import datetime
+        current_date = datetime.now().strftime('%Y.%m.%d')
+        
         # 既存のユーザー・問題の組み合わせを探す
         found = False
         for i, row in enumerate(existing_data[1:], start=2):  # ヘッダーをスキップ
@@ -183,10 +187,38 @@ def record_answer():
                 new_answers = current_answers + 1
                 new_correct = current_correct + (1 if is_correct else 0)
                 
+                # 直近3回の正解状況を更新
+                # 現在の直近1、2、3の値を取得
+                recent1 = row[5] if len(row) > 5 else ""
+                recent1_date = row[6] if len(row) > 6 else ""
+                recent2 = row[7] if len(row) > 7 else ""
+                recent2_date = row[8] if len(row) > 8 else ""
+                recent3 = row[9] if len(row) > 9 else ""
+                recent3_date = row[10] if len(row) > 10 else ""
+                
+                # 新しい直近3回の値を計算
+                new_recent1 = "1" if is_correct else "0"
+                new_recent1_date = current_date
+                new_recent2 = recent1
+                new_recent2_date = recent1_date
+                new_recent3 = recent2
+                new_recent3_date = recent2_date
+                
                 try:
+                    # 基本データを更新
                     worksheet.update(f'D{i}', [[new_answers]])
                     worksheet.update(f'E{i}', [[new_correct]])
+                    
+                    # 直近3回のデータを更新
+                    worksheet.update(f'F{i}', [[new_recent1]])
+                    worksheet.update(f'G{i}', [[new_recent1_date]])
+                    worksheet.update(f'H{i}', [[new_recent2]])
+                    worksheet.update(f'I{i}', [[new_recent2_date]])
+                    worksheet.update(f'J{i}', [[new_recent3]])
+                    worksheet.update(f'K{i}', [[new_recent3_date]])
+                    
                     print(f"既存データ更新: 行{i}, 回答回数={new_answers}, 正解回数={new_correct}")
+                    print(f"直近3回更新: {new_recent1}({new_recent1_date}), {new_recent2}({new_recent2_date}), {new_recent3}({new_recent3_date})")
                 except Exception as e:
                     print(f"データ更新エラー: {e}")
                     return jsonify({"error": f"Failed to update data: {e}"}), 500
@@ -196,7 +228,19 @@ def record_answer():
         
         if not found:
             # 新規データを追加
-            new_row = [user_id, user_name, question_id, 1, 1 if is_correct else 0]
+            new_row = [
+                user_id, 
+                user_name, 
+                question_id, 
+                1, 
+                1 if is_correct else 0,
+                "1" if is_correct else "0",  # 直近1
+                current_date,                # 直近1日付
+                "",                          # 直近2（初回なので空）
+                "",                          # 直近2日付（初回なので空）
+                "",                          # 直近3（初回なので空）
+                ""                           # 直近3日付（初回なので空）
+            ]
             try:
                 worksheet.append_row(new_row)
                 print(f"新規データ追加: {new_row}")
@@ -213,4 +257,4 @@ def record_answer():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001) 
+    app.run(host='0.0.0.0', port=5001)
