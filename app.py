@@ -42,8 +42,8 @@ def get_questions_from_sheet():
                 "question": row[4].strip(),
                 "answer": row[5].strip(),
                 "category": row[1].strip(),
-                "subCategory": row[2].strip() if len(row) > 2 else "",
                 "detailCategory": row[2].strip() if len(row) > 2 else "",
+                "subCategory": row[3].strip() if len(row) > 3 else "",  # D列の小分類
                 "type": row[6].strip() if len(row) > 6 else "",
                 "level": row[7].strip() if len(row) > 7 else "",
                 "imageUrl": row[8].strip() if len(row) > 8 else "",
@@ -257,4 +257,4 @@ def record_answer():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=5001) 
