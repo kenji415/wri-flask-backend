@@ -37,7 +37,7 @@ def get_questions_from_sheet():
     questions = []
     for row in rows[1:]:
         if len(row) >= 6 and row[4].strip() and row[5].strip():
-            questions.append({
+            question = {
                 "id": row[0].strip() if len(row) > 0 else "",
                 "question": row[4].strip(),
                 "answer": row[5].strip(),
@@ -47,9 +47,9 @@ def get_questions_from_sheet():
                 "type": row[6].strip() if len(row) > 6 else "",
                 "level": row[7].strip() if len(row) > 7 else "",
                 "comment": row[8].strip() if len(row) > 8 else "",  # I列をコメントとして取得
-                "imageUrl": row[9].strip() if len(row) > 9 else "",
-                "hint": row[10].strip() if len(row) > 10 else "",
-                "questionImageUrl": row[11].strip() if len(row) > 11 else "",
+                "hint": row[9].strip() if len(row) > 9 else "",     # J列をhintとして取得
+                "questionImageUrl": row[10].strip() if len(row) > 10 else "",  # K列を問題画像URLとして取得
+                "answerImageUrl": row[11].strip() if len(row) > 11 else "",    # L列を解答画像URLとして取得
                 # 選択肢データ（M列以降）
                 "choice1": row[12].strip() if len(row) > 12 else "",
                 "choice2": row[13].strip() if len(row) > 13 else "",
@@ -58,24 +58,22 @@ def get_questions_from_sheet():
                 "choice5": row[16].strip() if len(row) > 16 else "",
                 "choice6": row[17].strip() if len(row) > 17 else "",
                 "choice7": row[18].strip() if len(row) > 18 else ""
-            })
+            }
+            
+            # 画像URLがある問題をデバッグ出力
+            if question["questionImageUrl"] or question["answerImageUrl"] or (question["hint"] and question["hint"].startswith('http')):
+                print(f"�� Question {question['id']} has image URLs:")
+                print(f"  questionImageUrl: '{question['questionImageUrl']}'")
+                print(f"  answerImageUrl: '{question['answerImageUrl']}'")
+                print(f"  hint: '{question['hint']}'")
+            
+            questions.append(question)
     return questions
 
 @app.route('/api/questions')
 def get_questions():
     try:
         questions = get_questions_from_sheet()
-        
-        # デバッグ用: 選択肢問題の確認
-        choice_questions = [q for q in questions if q.get('type') == '選択肢']
-        print(f"選択肢問題の数: {len(choice_questions)}")
-        if choice_questions:
-            print(f"最初の選択肢問題: {choice_questions[0]}")
-            print(f"選択肢1: '{choice_questions[0].get('choice1')}'")
-            print(f"選択肢2: '{choice_questions[0].get('choice2')}'")
-            print(f"選択肢3: '{choice_questions[0].get('choice3')}'")
-            print(f"選択肢4: '{choice_questions[0].get('choice4')}'")
-        
         return jsonify(questions)
     except Exception as e:
         print(f"API エラー: {e}")
@@ -144,33 +142,25 @@ def record_answer():
         question_id = data.get('questionId')
         is_correct = data.get('isCorrect')
         
-        print(f"Record answer request: userId={user_id}, userName={user_name}, questionId={question_id}, isCorrect={is_correct}")
-        
         # スプレッドシートの「user集計」タブを取得
         sh = gc.open_by_key(SPREADSHEET_ID)
         
         # ワークシートの存在確認
         try:
             worksheet = sh.worksheet('user集計')
-            print("user集計タブにアクセス成功")
         except Exception as e:
-            print(f"user集計タブへのアクセスエラー: {e}")
             # タブが存在しない場合は作成を試行
             try:
                 worksheet = sh.add_worksheet(title='user集計', rows=1000, cols=12)
                 # ヘッダー行を追加（F～K列を含む）
                 worksheet.append_row(['ユーザーID', 'ユーザー名', '問題ID', '回答回数', '正解回数', '直近1', '直近1日付', '直近2', '直近2日付', '直近3', '直近3日付'])
-                print("user集計タブを作成しました")
             except Exception as create_error:
-                print(f"user集計タブの作成エラー: {create_error}")
                 return jsonify({"error": f"Failed to create user集計 tab: {create_error}"}), 500
         
         # 既存データを取得
         try:
             existing_data = worksheet.get_all_values()
-            print(f"既存データ行数: {len(existing_data)}")
         except Exception as e:
-            print(f"既存データ取得エラー: {e}")
             return jsonify({"error": f"Failed to get existing data: {e}"}), 500
         
         # 現在の日付を取得（YYYY.MM.DD形式）
@@ -217,11 +207,7 @@ def record_answer():
                     worksheet.update(f'I{i}', [[new_recent2_date]])
                     worksheet.update(f'J{i}', [[new_recent3]])
                     worksheet.update(f'K{i}', [[new_recent3_date]])
-                    
-                    print(f"既存データ更新: 行{i}, 回答回数={new_answers}, 正解回数={new_correct}")
-                    print(f"直近3回更新: {new_recent1}({new_recent1_date}), {new_recent2}({new_recent2_date}), {new_recent3}({new_recent3_date})")
                 except Exception as e:
-                    print(f"データ更新エラー: {e}")
                     return jsonify({"error": f"Failed to update data: {e}"}), 500
                 
                 found = True
@@ -244,9 +230,7 @@ def record_answer():
             ]
             try:
                 worksheet.append_row(new_row)
-                print(f"新規データ追加: {new_row}")
             except Exception as e:
-                print(f"新規データ追加エラー: {e}")
                 return jsonify({"error": f"Failed to append new data: {e}"}), 500
         
         return jsonify({"success": True})
@@ -258,4 +242,4 @@ def record_answer():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001) 
+    app.run(host='0.0.0.0', port=5001)
