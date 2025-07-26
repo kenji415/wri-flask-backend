@@ -30,9 +30,9 @@ vision_info = json.loads(os.environ['GOOGLE_VISION'])
 vision_creds = Credentials.from_service_account_info(vision_info)
 vision_client = vision.ImageAnnotatorClient(credentials=vision_creds)
 
-def get_questions_from_sheet():
+def get_questions_from_sheet(sheet_name):
     sh = gc.open_by_key(SPREADSHEET_ID)
-    worksheet = sh.worksheet(SHEET_NAME)
+    worksheet = sh.worksheet(sheet_name)
     rows = worksheet.get_all_values()
     questions = []
     for row in rows[1:]:
@@ -62,7 +62,7 @@ def get_questions_from_sheet():
             
             # 画像URLがある問題をデバッグ出力
             if question["questionImageUrl"] or question["answerImageUrl"] or (question["hint"] and question["hint"].startswith('http')):
-                print(f"�� Question {question['id']} has image URLs:")
+                print(f"🔍 Question {question['id']} has image URLs:")
                 print(f"  questionImageUrl: '{question['questionImageUrl']}'")
                 print(f"  answerImageUrl: '{question['answerImageUrl']}'")
                 print(f"  hint: '{question['hint']}'")
@@ -73,7 +73,18 @@ def get_questions_from_sheet():
 @app.route('/api/questions')
 def get_questions():
     try:
-        questions = get_questions_from_sheet()
+        # subjectパラメータを取得
+        subject = request.args.get('subject', 'syakai')  # デフォルトは社会
+        
+        # subjectに応じてシート名を決定
+        if subject == 'rika':
+            sheet_name = 'datarika'
+        else:
+            sheet_name = 'data'
+        
+        print(f"📊 問題取得: subject={subject}, sheet_name={sheet_name}")
+        
+        questions = get_questions_from_sheet(sheet_name)
         return jsonify(questions)
     except Exception as e:
         print(f"API エラー: {e}")
@@ -242,4 +253,4 @@ def record_answer():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=5001) 
